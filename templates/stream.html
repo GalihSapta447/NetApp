@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+{% block title %}Video Streaming UDP{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h2 class="mb-1">🎥 Video Streaming UDP</h2>
+        <p class="text-muted mb-0">
+            Unggah video pilihan Anda dan nikmati streaming secara real-time.
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <span id="senderBadge" class="badge text-bg-secondary px-3 py-2">Video sender: {{ sender_status.state }}</span>
+        <span id="receiverBadge" class="badge {{ 'text-bg-success' if receiver_status.online else 'text-bg-secondary' }} px-3 py-2">
+            Video receiver: {{ 'online' if receiver_status.online else 'menunggu' }}
+        </span>
+        <span id="audioBadge" class="badge {{ 'text-bg-success' if audio_receiver_status.online else 'text-bg-secondary' }} px-3 py-2">
+            Audio: {{ 'online' if audio_receiver_status.online else 'menunggu' }}
+        </span>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 h-100 overflow-hidden">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0">Live feed UDP</h5>
+                <span id="frameCounter" class="small text-muted">{{ receiver_status.received_frames }} frame</span>
+            </div>
+            <div class="card-body udp-viewer-wrap">
+                <div id="udpPlayer" class="udp-player">
+                    <img
+                        id="udpFeed"
+                        class="udp-feed"
+                        src="{{ url_for('video_feed') }}"
+                        alt="Live video yang diterima melalui UDP"
+                        draggable="false">
+
+                    <div id="feedPausedOverlay" class="udp-feed-overlay d-none" aria-hidden="true">
+                        <div class="udp-feed-overlay-icon">Ⅱ</div>
+                        <span>Live feed dijeda</span>
+                    </div>
+
+                    <div class="udp-player-controls" aria-label="Kontrol live feed">
+                        <div class="udp-live-progress" aria-hidden="true">
+                            <span id="streamProgress"></span>
+                        </div>
+                        <div class="udp-control-row">
+                            <button id="playPauseBtn" type="button" class="udp-control-button" aria-label="Jeda live feed" title="Putar/Jeda">
+                                <svg id="pauseIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                                <svg id="playIcon" class="d-none" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+
+                            <span id="streamClock" class="udp-stream-clock">0:00 / 0:00</span>
+
+                            <div class="udp-control-spacer"></div>
+
+                            <button id="muteAudioBtn" type="button" class="udp-control-button" aria-label="Aktifkan suara" title="Suara" disabled>
+                                <svg id="volumeIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm11.5 3a3.5 3.5 0 0 0-1.5-2.87v5.74A3.5 3.5 0 0 0 15.5 12zm0-7.18v2.06a6 6 0 0 1 0 10.24v2.06a8 8 0 0 0 0-14.36z"/></svg>
+                                <svg id="mutedIcon" class="d-none" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm12.59 3 2.7-2.7-1.42-1.42-2.7 2.7-2.7-2.7-1.42 1.42 2.7 2.7-2.7 2.7 1.42 1.42 2.7-2.7 2.7 2.7 1.42-1.42z"/></svg>
+                            </button>
+
+                            <input
+                                id="audioVolume"
+                                class="udp-volume"
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value="0.8"
+                                aria-label="Volume audio UDP"
+                                disabled>
+
+                            <button id="reloadFeedBtn" type="button" class="udp-control-button" aria-label="Muat ulang live feed" title="Muat ulang">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.76-4.24L13 11h8V3z"/></svg>
+                            </button>
+
+                            <button id="fullscreenBtn" type="button" class="udp-control-button" aria-label="Layar penuh" title="Layar penuh">
+                                <svg id="fullscreenIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"/></svg>
+                                <svg id="exitFullscreenIcon" class="d-none" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16h3v3h2v-5H5zm3-8H5v2h5V5H8zm6 11h2v-3h3v-2h-5zm2-11V5h-2v5h5V8z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <audio id="udpAudio" class="d-none" preload="none" aria-label="Audio streaming UDP"></audio>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">Upload video untuk UDP</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('udp_upload_video') }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="udpVideo" class="form-label">File video</label>
+                        <input
+                            id="udpVideo"
+                            type="file"
+                            name="video"
+                            class="form-control"
+                            accept="video/*,.mkv,.avi"
+                            required>
+                        <div class="form-text">MP4, AVI, MOV, MKV, WEBM, MPEG, atau MPG.</div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1" id="autostart" name="autostart" checked>
+                        <label class="form-check-label" for="autostart">
+                            Langsung mulai streaming setelah upload
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Upload dan proses UDP</button>
+                </form>
+
+                <hr>
+                <div class="small">
+                    <div class="d-flex justify-content-between mb-2 gap-3">
+                        <span class="text-muted">File aktif</span>
+                        <strong id="currentVideo" class="text-break text-end">{{ sender_status.current_file or '-' }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Frame terkirim</span>
+                        <strong id="sentFrames">{{ sender_status.frames_sent }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Paket audio</span>
+                        <strong id="sentAudioPackets">{{ sender_status.audio.packets_sent }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 gap-3">
+                        <span class="text-muted">Tujuan video</span>
+                        <strong class="text-end">{{ sender_status.target }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between gap-3">
+                        <span class="text-muted">Tujuan audio</span>
+                        <strong class="text-end">{{ sender_status.audio.target }}</strong>
+                    </div>
+                </div>
+                <form method="POST" action="{{ url_for('udp_stop_video') }}" class="mt-3">
+                    <button type="submit" class="btn btn-outline-danger w-100">Hentikan streaming UDP</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0">File video UDP</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if videos %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nama video</th>
+                        <th>Ukuran</th>
+                        <th>Terakhir diubah</th>
+                        <th class="text-end">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for video in videos %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold text-break">{{ video.name }}</div>
+                            {% if sender_status.state == 'streaming' and sender_status.current_file == video.name %}
+                            <span class="badge text-bg-success">Sumber aktif</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ video.size_text }}</td>
+                        <td>{{ video.modified }}</td>
+                        <td>
+                            <div class="d-flex flex-wrap justify-content-end gap-2">
+                                <form method="POST" action="{{ url_for('udp_start_video', filename=video.name) }}">
+                                    <button type="submit" class="btn btn-sm btn-primary">Putar</button>
+                                </form>
+                                <a
+                                    href="{{ url_for('udp_view_file', filename=video.name) }}"
+                                    target="_blank"
+                                    class="btn btn-sm btn-outline-secondary">
+                                    Lihat
+                                </a>
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('udp_delete_file', filename=video.name) }}"
+                                    onsubmit="return confirm('Hapus file video UDP {{ video.name|e }}?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🎞️</div>
+            <p class="mb-0">Belum ada file video UDP. Upload video di atas.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    const senderBadge = document.getElementById('senderBadge');
+    const receiverBadge = document.getElementById('receiverBadge');
+    const audioBadge = document.getElementById('audioBadge');
+    const currentVideo = document.getElementById('currentVideo');
+    const sentFrames = document.getElementById('sentFrames');
+    const sentAudioPackets = document.getElementById('sentAudioPackets');
+    const frameCounter = document.getElementById('frameCounter');
+
+    const player = document.getElementById('udpPlayer');
+    const feed = document.getElementById('udpFeed');
+    const pausedOverlay = document.getElementById('feedPausedOverlay');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const streamClock = document.getElementById('streamClock');
+    const streamProgress = document.getElementById('streamProgress');
+    const reloadFeedBtn = document.getElementById('reloadFeedBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
+    const exitFullscreenIcon = document.getElementById('exitFullscreenIcon');
+
+    const audio = document.getElementById('udpAudio');
+    const muteAudioBtn = document.getElementById('muteAudioBtn');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const mutedIcon = document.getElementById('mutedIcon');
+    const audioVolume = document.getElementById('audioVolume');
+
+    const videoFeedUrl = '{{ url_for("video_feed") }}';
+    const audioFeedUrl = '{{ url_for("audio_feed") }}';
+    const reloadVideoUrl = '{{ url_for("udp_reload_video") }}';
+
+    let latestStatus = null;
+    let loadedAudioKey = '';
+    let feedPaused = false;
+    let audioWasActivated = false;
+
+    function formatDuration(totalSeconds) {
+        const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+        const minutes = Math.floor(seconds / 60);
+        const remainder = String(seconds % 60).padStart(2, '0');
+        return `${minutes}:${remainder}`;
+    }
+
+    function audioIsReady(data) {
+        const audioSender = data?.sender?.audio || {};
+        return audioSender.state === 'streaming' && Boolean(data?.audio_receiver?.online);
+    }
+
+    function updateAudioIcon() {
+        const silent = audio.muted || audio.volume === 0 || audio.paused;
+        volumeIcon.classList.toggle('d-none', silent);
+        mutedIcon.classList.toggle('d-none', !silent);
+        muteAudioBtn.setAttribute(
+            'aria-label',
+            silent ? 'Aktifkan suara' : 'Matikan suara'
+        );
+    }
+
+    function setAudioAvailability(enabled) {
+        muteAudioBtn.disabled = !enabled;
+        audioVolume.disabled = !enabled;
+        if (!enabled) {
+            audio.pause();
+            audioWasActivated = false;
+        }
+        updateAudioIcon();
+    }
+
+    function configureAudioSource(data, force = false) {
+        const ready = audioIsReady(data);
+        setAudioAvailability(ready);
+        if (!ready) {
+            if (data?.sender?.audio?.state === 'no_audio' || data?.sender?.state !== 'streaming') {
+                audio.removeAttribute('src');
+                audio.load();
+                loadedAudioKey = '';
+            }
+            return;
+        }
+
+        const key = `${data.sender.current_file || 'stream'}-${data.audio_receiver.generation}`;
+        if (force || key !== loadedAudioKey) {
+            loadedAudioKey = key;
+            audio.src = `${audioFeedUrl}?stream=${encodeURIComponent(key)}&t=${Date.now()}`;
+            audio.load();
+            if (audioWasActivated && !feedPaused) {
+                audio.play().catch(() => {
+                    audioWasActivated = false;
+                    updateAudioIcon();
+                });
+            }
+        }
+    }
+
+    async function activateAudio() {
+        if (!latestStatus || !audioIsReady(latestStatus)) return;
+        configureAudioSource(latestStatus, !audio.getAttribute('src'));
+        audio.muted = false;
+        audio.volume = Number(audioVolume.value);
+        try {
+            await audio.play();
+            audioWasActivated = true;
+        } catch (_error) {
+            audioWasActivated = false;
+        }
+        updateAudioIcon();
+    }
+
+    function snapshotCurrentFrame() {
+        if (!feed.naturalWidth || !feed.naturalHeight) return null;
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = feed.naturalWidth;
+            canvas.height = feed.naturalHeight;
+            canvas.getContext('2d').drawImage(feed, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.86);
+        } catch (_error) {
+            return null;
+        }
+    }
+
+    function updatePlayButton() {
+        playIcon.classList.toggle('d-none', !feedPaused);
+        pauseIcon.classList.toggle('d-none', feedPaused);
+        playPauseBtn.setAttribute('aria-label', feedPaused ? 'Putar live feed' : 'Jeda live feed');
+        pausedOverlay.classList.toggle('d-none', !feedPaused);
+    }
+
+    function pauseFeed() {
+        const snapshot = snapshotCurrentFrame();
+        feedPaused = true;
+        if (snapshot) {
+            feed.src = snapshot;
+        } else {
+            feed.removeAttribute('src');
+        }
+        audio.pause();
+        updatePlayButton();
+        updateAudioIcon();
+    }
+
+    async function resumeFeed() {
+        feedPaused = false;
+        feed.src = `${videoFeedUrl}?t=${Date.now()}`;
+        updatePlayButton();
+        if (audioWasActivated && latestStatus && audioIsReady(latestStatus)) {
+            try { await audio.play(); } catch (_error) {}
+        }
+        updateAudioIcon();
+    }
+
+    async function reloadMedia() {
+        if (reloadFeedBtn.disabled) return;
+
+        const shouldResumeAudio = audioWasActivated;
+        reloadFeedBtn.disabled = true;
+        reloadFeedBtn.classList.add('is-loading');
+
+        try {
+            const response = await fetch(reloadVideoUrl, {
+                method: 'POST',
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store'
+            });
+
+            if (response.status === 401) {
+                window.location.href = '{{ url_for("login") }}';
+                return;
+            }
+
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || 'Video tidak dapat dimuat ulang.');
+            }
+
+            latestStatus = data;
+            feedPaused = false;
+            loadedAudioKey = '';
+            audioWasActivated = shouldResumeAudio;
+            audio.pause();
+            audio.removeAttribute('src');
+            audio.load();
+
+            streamClock.textContent = `0:00 / ${formatDuration(data.sender?.duration_seconds)}`;
+            streamProgress.style.width = '0%';
+            feed.removeAttribute('src');
+            updatePlayButton();
+            updateAudioIcon();
+
+            // Putuskan respons MJPEG lama, lalu buat koneksi baru setelah sender
+            // benar-benar dimulai kembali dari frame pertama.
+            await new Promise(resolve => setTimeout(resolve, 180));
+            feed.src = `${videoFeedUrl}?reload=${Date.now()}`;
+            await updateStatus();
+        } catch (error) {
+            window.alert(error.message || 'Video gagal dimuat ulang.');
+        } finally {
+            reloadFeedBtn.disabled = false;
+            reloadFeedBtn.classList.remove('is-loading');
+        }
+    }
+
+    playPauseBtn.addEventListener('click', async () => {
+        if (feedPaused) {
+            await resumeFeed();
+        } else {
+            pauseFeed();
+        }
+    });
+
+    muteAudioBtn.addEventListener('click', async () => {
+        if (audio.paused || !audioWasActivated) {
+            await activateAudio();
+            return;
+        }
+        audio.muted = !audio.muted;
+        updateAudioIcon();
+    });
+
+    audioVolume.addEventListener('input', async () => {
+        audio.volume = Number(audioVolume.value);
+        audio.muted = audio.volume === 0;
+        if (!audioWasActivated && audio.volume > 0) {
+            await activateAudio();
+        }
+        updateAudioIcon();
+    });
+    audio.volume = Number(audioVolume.value);
+
+    audio.addEventListener('play', updateAudioIcon);
+    audio.addEventListener('pause', updateAudioIcon);
+    audio.addEventListener('volumechange', updateAudioIcon);
+
+    reloadFeedBtn.addEventListener('click', reloadMedia);
+
+    fullscreenBtn.addEventListener('click', async () => {
+        try {
+            if (!document.fullscreenElement) {
+                await player.requestFullscreen();
+            } else {
+                await document.exitFullscreen();
+            }
+        } catch (_error) {}
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        const active = document.fullscreenElement === player;
+        fullscreenIcon.classList.toggle('d-none', active);
+        exitFullscreenIcon.classList.toggle('d-none', !active);
+        fullscreenBtn.setAttribute('aria-label', active ? 'Keluar layar penuh' : 'Layar penuh');
+    });
+
+    async function updateStatus() {
+        try {
+            const response = await fetch('{{ url_for("udp_status") }}', {cache: 'no-store'});
+            if (response.status === 401) {
+                window.location.href = '{{ url_for("login") }}';
+                return;
+            }
+            const data = await response.json();
+            if (!data.ok) return;
+            latestStatus = data;
+
+            senderBadge.textContent = `Video sender: ${data.sender.state}`;
+            senderBadge.className = `badge px-3 py-2 ${data.sender.state === 'streaming' ? 'text-bg-primary' : 'text-bg-secondary'}`;
+            receiverBadge.textContent = `Video receiver: ${data.receiver.online ? 'online' : 'menunggu'}`;
+            receiverBadge.className = `badge px-3 py-2 ${data.receiver.online ? 'text-bg-success' : 'text-bg-secondary'}`;
+
+            const audioState = data.sender.audio?.state || 'idle';
+            const audioOnline = Boolean(data.audio_receiver.online);
+            audioBadge.textContent = audioState === 'no_audio'
+                ? 'Audio: tidak tersedia'
+                : `Audio: ${audioOnline ? 'online' : audioState}`;
+            audioBadge.className = `badge px-3 py-2 ${audioOnline ? 'text-bg-success' : audioState === 'error' ? 'text-bg-danger' : 'text-bg-secondary'}`;
+
+            currentVideo.textContent = data.sender.current_file || '-';
+            sentFrames.textContent = data.sender.frames_sent;
+            sentAudioPackets.textContent = data.sender.audio?.packets_sent || 0;
+            frameCounter.textContent = `${data.receiver.received_frames} frame`;
+            const positionSeconds = Number(data.sender.position_seconds) || 0;
+            const durationSeconds = Number(data.sender.duration_seconds) || 0;
+            streamClock.textContent = `${formatDuration(positionSeconds)} / ${formatDuration(durationSeconds)}`;
+            const progressPercent = durationSeconds > 0
+                ? Math.min(100, Math.max(0, (positionSeconds / durationSeconds) * 100))
+                : 0;
+            streamProgress.style.width = `${progressPercent}%`;
+            configureAudioSource(data);
+        } catch (_error) {
+            receiverBadge.textContent = 'Video receiver: error';
+            receiverBadge.className = 'badge px-3 py-2 text-bg-danger';
+            audioBadge.textContent = 'Audio: error';
+            audioBadge.className = 'badge px-3 py-2 text-bg-danger';
+        }
+    }
+
+    updatePlayButton();
+    updateAudioIcon();
+    updateStatus();
+    setInterval(updateStatus, 2000);
+})();
+</script>
+{% endblock %}

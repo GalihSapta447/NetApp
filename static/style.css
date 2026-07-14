@@ -1,0 +1,411 @@
+:root {
+    --app-bg: #f4f6f9;
+    --chat-mine: #0d6efd;
+    --chat-other: #eef1f5;
+}
+
+body {
+    background-color: var(--app-bg);
+    min-height: 100vh;
+}
+
+.card {
+    border-radius: 14px;
+}
+
+.navbar-brand {
+    font-weight: 750;
+    letter-spacing: .2px;
+}
+
+.otp-input {
+    letter-spacing: .65rem;
+    font-weight: 700;
+    font-size: 1.6rem;
+}
+
+.feature-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-3px);
+}
+
+.feature-icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: #eef4ff;
+    font-size: 1.65rem;
+}
+
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #6c757d;
+}
+
+.empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: .7rem;
+}
+
+/* Live chat */
+.chat-card {
+    scroll-margin-top: 90px;
+    overflow: hidden;
+}
+
+.chat-messages {
+    height: 390px;
+    overflow-y: auto;
+    padding: 1.25rem;
+    background: linear-gradient(180deg, #f9fafb 0%, #f3f5f8 100%);
+}
+
+.chat-empty {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: #6c757d;
+    text-align: center;
+}
+
+.chat-row {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: .85rem;
+}
+
+.chat-row.mine {
+    justify-content: flex-end;
+}
+
+.chat-bubble {
+    max-width: min(78%, 620px);
+    padding: .65rem .85rem;
+    border-radius: 14px 14px 14px 4px;
+    background: var(--chat-other);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+}
+
+.chat-row.mine .chat-bubble {
+    color: white;
+    background: var(--chat-mine);
+    border-radius: 14px 14px 4px 14px;
+}
+
+.chat-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: .18rem;
+    font-size: .76rem;
+    color: #6c757d;
+}
+
+.chat-row.mine .chat-meta {
+    color: rgba(255, 255, 255, .78);
+}
+
+.chat-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.chat-form {
+    background: white;
+}
+
+/* Live feed UDP */
+.udp-viewer-wrap {
+    padding: 1rem;
+    background: #111827;
+}
+
+.udp-player {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 12px;
+    background: #030712;
+    box-shadow: 0 18px 35px rgba(0, 0, 0, .24);
+}
+
+.udp-feed {
+    display: block;
+    width: 100%;
+    min-height: 360px;
+    max-height: 570px;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    background: #030712;
+    user-select: none;
+}
+
+.udp-feed-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    color: rgba(255, 255, 255, .9);
+    background: rgba(3, 7, 18, .38);
+    pointer-events: none;
+}
+
+.udp-feed-overlay-icon {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    font-size: 1.4rem;
+    font-weight: 800;
+    background: rgba(0, 0, 0, .58);
+    backdrop-filter: blur(6px);
+}
+
+.udp-player-controls {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    padding: 1.5rem .85rem .7rem;
+    color: white;
+    background: linear-gradient(transparent, rgba(0, 0, 0, .92));
+}
+
+.udp-live-progress {
+    position: relative;
+    height: 3px;
+    margin: 0 .15rem .55rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .35);
+}
+
+.udp-live-progress span {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #f8f9fa;
+}
+
+.udp-live-progress span::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: white;
+    transform: translateY(-50%);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, .18);
+}
+
+.udp-control-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: .35rem;
+}
+
+.udp-control-spacer {
+    flex: 1;
+}
+
+.udp-control-button {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    color: white;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    transition: background-color .16s ease, opacity .16s ease, transform .16s ease;
+}
+
+.udp-control-button:hover:not(:disabled),
+.udp-control-button:focus-visible {
+    background: rgba(255, 255, 255, .18);
+    transform: scale(1.04);
+    outline: none;
+}
+
+.udp-control-button:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+.udp-control-button svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+.udp-stream-clock {
+    margin-left: .2rem;
+    font-size: .86rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.udp-volume {
+    width: 105px;
+    height: 4px;
+    margin: 0 .35rem;
+    accent-color: white;
+    cursor: pointer;
+}
+
+.udp-volume:disabled {
+    cursor: not-allowed;
+    opacity: .4;
+}
+
+.udp-audio-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .85rem;
+    padding: .85rem 1rem;
+    text-align: left;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .075);
+    backdrop-filter: blur(8px);
+}
+
+.udp-audio-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, .1);
+    font-size: 1.15rem;
+}
+
+.udp-audio-copy {
+    min-width: 0;
+}
+
+.udp-audio-copy strong {
+    display: block;
+    margin-bottom: .1rem;
+    font-size: .9rem;
+}
+
+.udp-audio-status {
+    color: #cbd5e1;
+    font-size: .79rem;
+    line-height: 1.4;
+}
+
+.udp-audio-port {
+    padding: .3rem .55rem;
+    color: #dbeafe;
+    border: 1px solid rgba(147, 197, 253, .25);
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .2);
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.udp-player:fullscreen {
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 0;
+    background: black;
+}
+
+.udp-player:fullscreen .udp-feed {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+}
+
+.table td,
+.table th {
+    padding: .9rem 1rem;
+}
+
+@media (max-width: 768px) {
+    .udp-feed {
+        min-height: 280px;
+    }
+
+    .udp-volume {
+        width: 76px;
+    }
+}
+
+@media (max-width: 576px) {
+    .chat-messages {
+        height: 330px;
+        padding: .8rem;
+    }
+
+    .chat-bubble {
+        max-width: 88%;
+    }
+
+    .udp-viewer-wrap {
+        padding: .65rem;
+    }
+
+    .udp-feed {
+        min-height: 220px;
+    }
+
+    .udp-player-controls {
+        padding-right: .45rem;
+        padding-left: .45rem;
+    }
+
+    .udp-control-row {
+        gap: .15rem;
+    }
+
+    .udp-control-button {
+        width: 32px;
+        height: 32px;
+    }
+
+    .udp-control-button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .udp-volume {
+        width: 56px;
+        margin: 0 .1rem;
+    }
+
+    .udp-stream-clock {
+        font-size: .75rem;
+    }
+
+    .udp-audio-panel {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .udp-audio-port {
+        grid-column: 2;
+        justify-self: start;
+    }
+}

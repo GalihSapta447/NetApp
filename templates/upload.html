@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}File Transfer TCP{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h2 class="mb-1">📤 File Transfer TCP</h2>
+        <p class="text-muted mb-0">
+            Kirim file dengan koneksi TCP yang andal, lalu lihat, unduh, atau hapus file dari server.
+        </p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+        <h5 class="mb-3">Upload file baru</h5>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-9">
+                    <label for="tcpFile" class="form-label">Pilih file</label>
+                    <input id="tcpFile" type="file" name="file" class="form-control" required>
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0">File yang diterima TCP server</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if files %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nama file</th>
+                        <th>Ukuran</th>
+                        <th>Terakhir diubah</th>
+                        <th class="text-end">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold text-break">{{ file.name }}</div>
+                            <small class="text-muted">Disimpan melalui TCP</small>
+                        </td>
+                        <td>{{ file.size_text }}</td>
+                        <td>{{ file.modified }}</td>
+                        <td>
+                            <div class="d-flex flex-wrap justify-content-end gap-2">
+                                <a
+                                    href="{{ url_for('tcp_view_file', filename=file.name) }}"
+                                    target="_blank"
+                                    class="btn btn-sm btn-outline-primary">
+                                    Lihat
+                                </a>
+                                <a
+                                    href="{{ url_for('tcp_download_file', filename=file.name) }}"
+                                    class="btn btn-sm btn-outline-secondary">
+                                    Download
+                                </a>
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('tcp_delete_file', filename=file.name) }}"
+                                    onsubmit="return confirm('Hapus file TCP {{ file.name|e }}?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📁</div>
+            <p class="mb-0">Belum ada file yang diterima TCP server.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

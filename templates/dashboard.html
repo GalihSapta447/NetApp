@@ -1,0 +1,222 @@
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+
+<div
+  class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4"
+>
+  <div>
+    <h2 class="mb-1">Halo, {{ username }} 👋</h2>
+    <p class="text-muted mb-0">
+      Kelola transfer TCP, streaming UDP, dan chat antar pengguna.
+    </p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card feature-card shadow-sm h-100 border-0">
+      <div class="card-body p-4">
+        <div class="feature-icon mb-3">📤</div>
+        <h4 class="card-title">File Transfer TCP</h4>
+        <p class="card-text text-muted">
+          Kirim file melalui socket TCP, lihat isi file yang didukung browser,
+          download, dan hapus file dari server.
+        </p>
+        <div class="d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('upload') }}" class="btn btn-primary">Buka TCP</a>
+          <span class="badge text-bg-light">{{ tcp_file_count }} file</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card feature-card shadow-sm h-100 border-0">
+      <div class="card-body p-4">
+        <div class="feature-icon mb-3">🎥</div>
+        <h4 class="card-title">Video Streaming UDP</h4>
+        <p class="card-text text-muted">
+          Upload file video, kirim frame JPEG melalui UDP, tampilkan live feed,
+          dan kelola file sumber video.
+        </p>
+        <div class="d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('stream_page') }}" class="btn btn-primary"
+            >Buka UDP</a
+          >
+          <span class="badge text-bg-light">{{ udp_file_count }} video</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Live chat sengaja diletakkan di bawah fitur TCP dan UDP. -->
+<section id="live-chat" class="card shadow-sm border-0 mt-4 chat-card">
+  <div
+    class="card-header bg-white d-flex justify-content-between align-items-center py-3"
+  >
+    <div>
+      <h4 class="mb-1">💬 Live Chat</h4>
+      <small class="text-muted">Pesan diperbarui otomatis.</small>
+    </div>
+    <span id="chatConnection" class="badge text-bg-secondary"
+      >Menghubungkan...</span
+    >
+  </div>
+  <div class="card-body p-0">
+    <div id="chatMessages" class="chat-messages" aria-live="polite">
+      <div id="chatEmpty" class="chat-empty">
+        Belum ada pesan. Mulai percakapan pertama.
+      </div>
+    </div>
+    <form id="chatForm" class="chat-form border-top p-3">
+      <div class="input-group">
+        <input
+          id="chatInput"
+          name="message"
+          type="text"
+          class="form-control"
+          maxlength="500"
+          autocomplete="off"
+          placeholder="Tulis pesan untuk pengguna lain..."
+          required
+        />
+        <button id="chatSendButton" class="btn btn-primary" type="submit">
+          Kirim
+        </button>
+      </div>
+      <div class="d-flex justify-content-between mt-1">
+        <small id="chatError" class="text-danger"></small>
+        <small id="chatCounter" class="text-muted">0/500</small>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %} {% block scripts %}
+<script>
+  (() => {
+    const messagesBox = document.getElementById("chatMessages");
+    const emptyState = document.getElementById("chatEmpty");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("chatInput");
+    const button = document.getElementById("chatSendButton");
+    const errorBox = document.getElementById("chatError");
+    const counter = document.getElementById("chatCounter");
+    const connection = document.getElementById("chatConnection");
+    let lastId = 0;
+    let loading = false;
+
+    function formatTime(value) {
+      const iso = value.includes("T") ? value : value.replace(" ", "T") + "Z";
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    function addMessage(item) {
+      emptyState?.remove();
+      const row = document.createElement("div");
+      row.className = `chat-row ${item.mine ? "mine" : ""}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble";
+
+      const meta = document.createElement("div");
+      meta.className = "chat-meta";
+      const sender = document.createElement("strong");
+      sender.textContent = item.mine ? "Anda" : item.username;
+      const time = document.createElement("span");
+      time.textContent = formatTime(item.created_at);
+      meta.append(sender, time);
+
+      const message = document.createElement("div");
+      message.className = "chat-text";
+      message.textContent = item.message;
+
+      bubble.append(meta, message);
+      row.appendChild(bubble);
+      messagesBox.appendChild(row);
+      lastId = Math.max(lastId, Number(item.id));
+    }
+
+    async function loadMessages() {
+      if (loading) return;
+      loading = true;
+      const shouldStickToBottom =
+        messagesBox.scrollHeight -
+          messagesBox.scrollTop -
+          messagesBox.clientHeight <
+        100;
+      try {
+        const response = await fetch(
+          `{{ url_for('chat_messages') }}?after_id=${lastId}`,
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          },
+        );
+        if (response.status === 401) {
+          window.location.href = '{{ url_for("login") }}';
+          return;
+        }
+        const data = await response.json();
+        if (!response.ok || !data.ok)
+          throw new Error(data.error || "Gagal mengambil chat.");
+        data.messages.forEach(addMessage);
+        if (
+          data.messages.length &&
+          (shouldStickToBottom || data.messages.some((item) => item.mine))
+        ) {
+          messagesBox.scrollTop = messagesBox.scrollHeight;
+        }
+        connection.className = "badge text-bg-success";
+        connection.textContent = "Terhubung";
+      } catch (error) {
+        connection.className = "badge text-bg-danger";
+        connection.textContent = "Terputus";
+      } finally {
+        loading = false;
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+
+      button.disabled = true;
+      errorBox.textContent = "";
+      try {
+        const response = await fetch('{{ url_for("send_chat_message") }}', {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ message }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok)
+          throw new Error(data.error || "Pesan gagal dikirim.");
+        input.value = "";
+        counter.textContent = "0/500";
+        await loadMessages();
+        input.focus();
+      } catch (error) {
+        errorBox.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    input.addEventListener("input", () => {
+      counter.textContent = `${input.value.length}/500`;
+    });
+
+    loadMessages();
+    setInterval(loadMessages, 1500);
+  })();
+</script>
+{% endblock %}
